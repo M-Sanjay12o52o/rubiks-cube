@@ -4,6 +4,7 @@ export type CubeletData = {
     position: Vector3;
     colors: Colors;
 };
+export type Face = 'U' | 'D' | 'F' | 'B' | 'L' | 'R'; // Up, Down, Front, Back, Left, Right
 
 export function createInitialCubeState(): CubeletData[] {
     const state: CubeletData[] = [];
@@ -39,11 +40,22 @@ export function createInitialCubeState(): CubeletData[] {
 
 export function rotateFace(
     cubeState: CubeletData[],
-    axis: 'x' | 'y' | 'z',
-    layer: -1 | 1,
+    face: Face,
     clockwise: boolean
 ): CubeletData[] {
     const newState = cubeState.map(cube => ({ ...cube }));
+
+    // Map face to axis and layer
+    const faceMap: Record<Face, { axis: 'x' | 'y' | 'z'; layer: -1 | 1 }> = {
+        R: { axis: 'x', layer: 1 },
+        L: { axis: 'x', layer: -1 },
+        U: { axis: 'y', layer: 1 },
+        D: { axis: 'y', layer: -1 },
+        F: { axis: 'z', layer: 1 },
+        B: { axis: 'z', layer: -1 }
+    };
+
+    const { axis, layer } = faceMap[face];
     const axisIndex = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
 
     newState.forEach(cube => {

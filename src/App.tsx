@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { RubiksCube } from './components/RubiksCube';
 import { useThree } from '@react-three/fiber';
 import { Vector3 } from 'three';
+import { CubeletData, createInitialCubeState, rotateFace, Face } from './utils/cubeUtils';
 import './App.css';
 
 // Component to manage controls and provide reset function
@@ -27,33 +28,54 @@ function SceneControls({ setResetCallback }: { setResetCallback: (reset: () => v
   return (
     <OrbitControls
       ref={controlsRef}
-      enablePan={true}
+      enablePan={false} // Keep cube centered
       enableZoom={true}
-      minDistance={2.5}
-      maxDistance={10}
+      minDistance={2.5} // Prevent seeing inside
+      maxDistance={20}  // Limit zoom out
       target={[0, 0, 0]}
+      mouseButtons={{
+        LEFT: 0, // Rotate
+        MIDDLE: 2, // Zoom
+        RIGHT: 1 // Disabled (could be pan)
+      }}
+      dampingFactor={0.15} // Smooth rotation
     />
   );
 }
 
 function App() {
-  const [scrambled, setScrambled] = useState<boolean>(false);
+  const [cubeState, setCubeState] = useState<CubeletData[]>(createInitialCubeState());
   const [isScrambling, setIsScrambling] = useState<boolean>(false);
   const resetCameraRef = useRef<(() => void) | null>(null);
+
+  const performRandomMove = () => {
+    const faces: Face[] = ['U', 'D', 'F', 'B', 'L', 'R'];
+    const randomFace = faces[Math.floor(Math.random() * faces.length)];
+    const clockwise = Math.random() > 0.5;
+    setCubeState(prevState => rotateFace(prevState, randomFace, clockwise));
+  };
 
   const handleScramble = () => {
     if (!isScrambling) {
       setIsScrambling(true);
-      setScrambled(true);
+      let moveCount = 0;
+
+      const scrambleStep = () => {
+        if (moveCount < 20) {
+          performRandomMove();
+          moveCount++;
+          requestAnimationFrame(scrambleStep);
+        } else {
+          setIsScrambling(false);
+        }
+      };
+
+      requestAnimationFrame(scrambleStep);
     }
   };
 
-  const handleScrambleComplete = () => {
-    setIsScrambling(false);
-  };
-
   const handleReset = () => {
-    setScrambled(false);
+    setCubeState(createInitialCubeState());
     setIsScrambling(false);
   };
 
@@ -77,7 +99,7 @@ function App() {
         <color attach="background" args={["#f0f0f0"]} />
         <ambientLight intensity={0.7} />
         <directionalLight position={[5, 5, 5]} intensity={0.8} castShadow />
-        <RubiksCube scrambled={scrambled} onScrambleComplete={handleScrambleComplete} />
+        <RubiksCube cubeState={cubeState} onRotateFace={() => { }} />
         <SceneControls setResetCallback={setResetCallback} />
       </Canvas>
 
@@ -110,15 +132,15 @@ function App() {
 
         <button
           onClick={handleReset}
-          disabled={!scrambled || isScrambling}
+          disabled={isScrambling}
           style={{
             padding: '10px 20px',
             fontSize: '16px',
-            backgroundColor: (!scrambled || isScrambling) ? '#ccc' : '#2196F3',
+            backgroundColor: isScrambling ? '#ccc' : '#2196F3',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
-            cursor: (!scrambled || isScrambling) ? 'not-allowed' : 'pointer',
+            cursor: isScrambling ? 'not-allowed' : 'pointer',
           }}
         >
           Reset Cube
